@@ -97,8 +97,8 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
 def convert_docx_to_pdf_libreoffice(docx_path, pdf_path):
     outdir = os.path.dirname(pdf_path)
     subprocess.run(
-        ["soffice", "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
-        check=True,
+    ["/usr/bin/soffice", "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
+    check=True,
     )
     created_pdf = os.path.join(
         outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf"
