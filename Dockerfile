@@ -1,15 +1,24 @@
-FROM python:3.11-slim
+# Use Ubuntu 22.04 full image
+FROM ubuntu:22.04
 
-# Install LibreOffice
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install Python and LibreOffice
 RUN apt-get update && \
-    apt-get install -y libreoffice && \
+    apt-get install -y python3 python3-pip python3-venv libreoffice libreoffice-writer && \
     rm -rf /var/lib/apt/lists/*
 
+# Set working directory
 WORKDIR /app
 COPY . /app
 
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+# Install Python dependencies
+RUN pip3 install --upgrade pip
+RUN pip3 install -r requirements.txt
 
+# Expose port for Render
 EXPOSE 5000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:5000", "--workers", "2"]
+
+# Start Gunicorn using the port Render provides
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:$PORT", "--workers", "2"]
