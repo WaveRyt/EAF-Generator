@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Download PDFs</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 500px; margin: auto; padding: 30px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
+        h2 { color: #2c3e50; }
+        a { display: block; margin: 15px 0; font-size: 1.1em; color: #2980b9; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Your PDFs are ready!</h2>
+        <a href="/uploads/{{ bundle_pdf }}" download>Download Bundle PDF</a>
+        <a href="/uploads/{{ bills_pdf }}" download>Download Bills Only PDF</a>
+        <br>
+        <a href="/">Go back to form</a>
+    </div>
+</body>
+</html>

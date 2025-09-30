@@ -1,0 +1,7 @@
+Flask
+werkzeug
+pypdf2
+python-docx
+pillow
+num2words
+gunicorn

@@ -1,0 +1,112 @@
+<!-- templates/index.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>EAF Generator - Shaastra26</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { padding: 30px; }
+    .file-list { margin-top: 8px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 class="mb-3">EAF Generator - Shaastra2026</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="alert alert-warning">
+          {% for msg in messages %} <div>{{ msg }}</div> {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="post" enctype="multipart/form-data">
+
+      <!-- Date -->
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Date</label>
+        <div class="col-sm-4">
+          <input type="date" class="form-control" name="date" value="{{''}}">
+        </div>
+      </div>
+
+      <!-- Amount and Amount Words -->
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Amount (₹)</label>
+        <div class="col-sm-4">
+          <input type="number" step="0.01" class="form-control" name="amount" placeholder="e.g. 12345" required>
+        </div>
+        <label class="col-sm-2 col-form-label">Amount (Words)</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="amount_words" placeholder="Leave blank to auto-generate">
+        </div>
+      </div>
+
+      <!-- Purpose / Remarks -->
+      <div class="mb-3">
+        <label class="form-label">Purpose / Remarks</label>
+        <textarea class="form-control" name="purpose" rows="3" placeholder="Short description of expense" required></textarea>
+      </div>
+
+      <!-- Bank Details (Optional) -->
+      <h5 class="mt-4">Bank Details (Optional Override)</h5>
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Account Number</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="account_number" placeholder="e.g. 1234567890">
+        </div>
+        <label class="col-sm-2 col-form-label">Account Holder Name</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="account_holder" placeholder="e.g. John Doe">
+        </div>
+      </div>
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Bank Name</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="bank_name" placeholder="e.g. HDFC Bank">
+        </div>
+        <label class="col-sm-2 col-form-label">IFSC Code</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="ifsc" placeholder="e.g. HDFC0001234">
+        </div>
+      </div>
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Branch</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="branch" placeholder="e.g. MG Road">
+        </div>
+      </div>
+
+      <!-- Upload Bills -->
+      <div class="mb-3">
+        <label class="form-label">Upload Bills (PDF / JPG / PNG). Multiple allowed</label>
+        <input class="form-control" type="file" name="bills" multiple accept=".pdf,.png,.jpg,.jpeg" required>
+        <div class="file-list text-muted">Tip: upload all bills for this request. Images will be auto-converted to PDFs.</div>
+      </div>
+
+      <!-- Custom filenames -->
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Bundle PDF Name</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="bundle_filename" placeholder="e.g. EAF_Bundle" required>
+        </div>
+        <label class="col-sm-2 col-form-label">Bills Only PDF Name</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="bills_only_filename" placeholder="e.g. Bills_Only" required>
+        </div>
+      </div>
+
+      <!-- Submit button -->
+      <button class="btn btn-primary">Generate & Download PDFs</button>
+    </form>
+
+    <hr>
+    <p class="text-muted small">
+      Built for Shaastra finance workflow. After download you can upload the final bundle to Drive / attach to emails / track in your GSheet.
+    </p>
+  </div>
+</body>
+</html>
