@@ -5,3 +5,4 @@ python-docx
 pillow
 num2words
 gunicorn
+docx2pdf

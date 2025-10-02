@@ -1,6 +1,5 @@
 import os
 import uuid
-import subprocess
 from datetime import datetime
 from flask import Flask, request, send_file, render_template, redirect, flash
 from werkzeug.utils import secure_filename
@@ -8,10 +7,9 @@ from PyPDF2 import PdfMerger
 from docx import Document
 from PIL import Image
 from num2words import num2words
-import subprocess
-import shutil
-import os
+from docx2pdf import convert  # More reliable DOCX->PDF on Linux
 
+import shutil
 
 # === CONFIG ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -98,30 +96,12 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
     return out_docx_path
 
 
-def convert_docx_to_pdf_libreoffice(docx_path, pdf_path):
-    outdir = os.path.dirname(pdf_path)
-
-    # Look for soffice or libreoffice binary
-    soffice_path = shutil.which("soffice") or shutil.which("libreoffice")
-    if not soffice_path:
-        raise RuntimeError(
-            "LibreOffice not found: neither 'soffice' nor 'libreoffice' in PATH"
-        )
-
-    subprocess.run(
-        [soffice_path, "--headless", "--convert-to", "pdf:writer_pdf_Export", "--outdir", outdir, docx_path],
-        check=True,
-    )
-
-    created_pdf = os.path.join(
-        outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf"
-    )
-    if created_pdf != pdf_path:
-        os.replace(created_pdf, pdf_path)
-
+def convert_docx_to_pdf(docx_path, pdf_path):
+    """Use docx2pdf for reliable conversion on Linux."""
+    convert(docx_path, pdf_path)
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("PDF conversion failed")
     return pdf_path
-
-
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -175,12 +155,12 @@ def index():
         generate_eaf_docx(TEMPLATE_DOCX, out_docx, date, amount, amount_words, purpose,
                           acc_number, acc_holder, bank_name, ifsc, branch)
 
-        # Convert DOCX -> PDF (Linux LibreOffice only)
+        # Convert DOCX -> PDF
         out_pdf = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.pdf")
         try:
-            convert_docx_to_pdf_libreoffice(out_docx, out_pdf)
+            convert_docx_to_pdf(out_docx, out_pdf)
         except Exception as e:
-            flash(f"Failed to convert DOCX to PDF using LibreOffice: {e}")
+            flash(f"Failed to convert DOCX to PDF: {e}")
             return redirect(request.url)
 
         # Merge EAF PDF + bills
