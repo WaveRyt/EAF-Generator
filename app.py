@@ -142,13 +142,20 @@ def convert_docx_to_pdf(docx_path, pdf_path):
 def login():
     if not google.authorized:
         return redirect(url_for("google.login"))
+
     resp = google.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        flash("Google login failed. Please try again.")
+        return redirect(url_for("index"))
+
     email = resp.json().get("email")
-    if email not in ALLOWED_EMAILS:
+    if not email or email not in ALLOWED_EMAILS:
         flash("Access denied: your email is not allowed.")
-        return redirect(url_for("login"))
+        return redirect(url_for("unauthorized"))
+
     session["user_email"] = email
     return redirect(url_for("index"))
+
 
 
 @app.route("/", methods=["GET", "POST"])
