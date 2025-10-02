@@ -101,13 +101,15 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
 def convert_docx_to_pdf_libreoffice(docx_path, pdf_path):
     outdir = os.path.dirname(pdf_path)
 
-    # Find the soffice/libreoffice binary
+    # Look for soffice or libreoffice binary
     soffice_path = shutil.which("soffice") or shutil.which("libreoffice")
     if not soffice_path:
-        raise RuntimeError("LibreOffice not found: neither 'soffice' nor 'libreoffice' in PATH")
+        raise RuntimeError(
+            "LibreOffice not found: neither 'soffice' nor 'libreoffice' in PATH"
+        )
 
     subprocess.run(
-        [soffice_path, "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
+        [soffice_path, "--headless", "--convert-to", "pdf:writer_pdf_Export", "--outdir", outdir, docx_path],
         check=True,
     )
 
@@ -116,6 +118,7 @@ def convert_docx_to_pdf_libreoffice(docx_path, pdf_path):
     )
     if created_pdf != pdf_path:
         os.replace(created_pdf, pdf_path)
+
     return pdf_path
 
 
