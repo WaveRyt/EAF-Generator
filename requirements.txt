@@ -1,7 +1,8 @@
 Flask
+Flask-Dance
 werkzeug
-pypdf2
+PyPDF2
 python-docx
-pillow
+Pillow
 num2words
 gunicorn

@@ -2,29 +2,44 @@ import os
 import uuid
 import subprocess
 from datetime import datetime
-from flask import Flask, request, send_file, render_template, redirect, flash
+from flask import Flask, request, send_file, render_template, redirect, flash, session, url_for
 from werkzeug.utils import secure_filename
 from PyPDF2 import PdfMerger
 from docx import Document
 from PIL import Image
 from num2words import num2words
 import shutil
+from flask_dance.contrib.google import make_google_blueprint, google
 
 # === CONFIG ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 TEMPLATE_DOCX = os.path.join(BASE_DIR, "EAF_Template.docx")
-
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
 MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200 MB
 
+# Flask setup
 app = Flask(__name__)
-app.secret_key = "dev-secret-change-this"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-this")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Allowed emails from env
+ALLOWED_EMAILS = os.environ.get("ALLOWED_EMAILS", "").split(",")
+ALLOWED_EMAILS = [email.strip() for email in ALLOWED_EMAILS if email.strip()]
 
+# Google OAuth setup
+google_bp = make_google_blueprint(
+    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+    scope=["profile", "email"],
+    redirect_url="/login/google/authorized"
+)
+app.register_blueprint(google_bp, url_prefix="/login")
+
+
+# === UTILITIES ===
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -94,11 +109,16 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
 
 
 def convert_docx_to_pdf(docx_path, pdf_path):
-    """Convert DOCX -> PDF using LibreOffice on Linux."""
     outdir = os.path.dirname(pdf_path)
-    soffice_path = shutil.which("soffice") or shutil.which("libreoffice")
+    possible_paths = [
+        "/usr/bin/libreoffice",
+        "/usr/bin/soffice",
+        shutil.which("libreoffice"),
+        shutil.which("soffice")
+    ]
+    soffice_path = next((p for p in possible_paths if p and os.path.exists(p)), None)
     if not soffice_path:
-        raise RuntimeError("LibreOffice not found. Please install it.")
+        raise RuntimeError("LibreOffice not found. Install it in Dockerfile or system.")
 
     subprocess.run(
         [soffice_path, "--headless", "--convert-to", "pdf:writer_pdf_Export", "--outdir", outdir, docx_path],
@@ -115,9 +135,27 @@ def convert_docx_to_pdf(docx_path, pdf_path):
     return pdf_path
 
 
+# === ROUTES ===
+@app.route("/login")
+def login():
+    if not google.authorized:
+        return redirect(url_for("google.login"))
+    resp = google.get("/oauth2/v2/userinfo")
+    email = resp.json().get("email")
+    if email not in ALLOWED_EMAILS:
+        flash("Access denied: your email is not allowed.")
+        return redirect(url_for("login"))
+    session["user_email"] = email
+    return redirect(url_for("index"))
+
+
 @app.route("/", methods=["GET", "POST"])
 def index():
+    if "user_email" not in session:
+        return redirect(url_for("login"))
+
     if request.method == "POST":
+        # --- Form data ---
         date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
         amount = request.form.get("amount") or "0"
         amount_words = request.form.get("amount_words") or number_to_words(amount)
@@ -131,6 +169,7 @@ def index():
         ifsc = request.form.get("ifsc") or ""
         branch = request.form.get("branch") or ""
 
+        # --- Bills upload ---
         bill_files = request.files.getlist("bills")
         if not bill_files or all(f.filename == "" for f in bill_files):
             flash("Please upload at least one bill file (pdf or image).")
@@ -158,11 +197,13 @@ def index():
                 flash(f"File '{f.filename}' not allowed. Allowed: pdf, png, jpg, jpeg")
                 return redirect(request.url)
 
+        # --- Generate EAF DOCX ---
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_docx = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.docx")
         generate_eaf_docx(TEMPLATE_DOCX, out_docx, date, amount, amount_words, purpose,
                           acc_number, acc_holder, bank_name, ifsc, branch)
 
+        # --- Convert DOCX -> PDF ---
         out_pdf = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.pdf")
         try:
             convert_docx_to_pdf(out_docx, out_pdf)
@@ -170,6 +211,7 @@ def index():
             flash(f"Failed to convert DOCX to PDF: {e}")
             return redirect(request.url)
 
+        # --- Merge PDFs ---
         merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename}.pdf")
         merger = PdfMerger()
         try:
@@ -183,6 +225,7 @@ def index():
             flash("Error merging PDFs: " + str(me))
             return redirect(request.url)
 
+        # --- Bills-only PDF ---
         bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename}.pdf")
         merger2 = PdfMerger()
         try:
