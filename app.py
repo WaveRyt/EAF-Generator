@@ -12,6 +12,7 @@ import subprocess
 import shutil
 import os
 
+
 # === CONFIG ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
@@ -97,49 +98,26 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
     return out_docx_path
 
 
-
-
 def convert_docx_to_pdf_libreoffice(docx_path, pdf_path):
-    """
-    Convert DOCX to PDF using LibreOffice (soffice).
-    Works on Render/Docker.
-
-    Raises RuntimeError if LibreOffice is not installed or conversion fails.
-    """
-    # Ensure absolute paths
-    docx_path = os.path.abspath(docx_path)
-    pdf_path = os.path.abspath(pdf_path)
     outdir = os.path.dirname(pdf_path)
 
-    # Find soffice binary
-    soffice_path = shutil.which("soffice")
+    # Find the soffice/libreoffice binary
+    soffice_path = shutil.which("soffice") or shutil.which("libreoffice")
     if not soffice_path:
-        raise RuntimeError(
-            "LibreOffice not found: 'soffice' binary is missing. "
-            "Make sure LibreOffice is installed in your Docker image or environment."
-        )
+        raise RuntimeError("LibreOffice not found: neither 'soffice' nor 'libreoffice' in PATH")
 
-    try:
-        subprocess.run(
-            [soffice_path, "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            f"Failed to convert DOCX to PDF using LibreOffice.\n"
-            f"Return code: {e.returncode}\n"
-            f"stdout: {e.stdout.decode()}\n"
-            f"stderr: {e.stderr.decode()}"
-        )
+    subprocess.run(
+        [soffice_path, "--headless", "--convert-to", "pdf", "--outdir", outdir, docx_path],
+        check=True,
+    )
 
-    # LibreOffice names PDF same as DOCX, ensure final path matches requested
-    created_pdf = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
+    created_pdf = os.path.join(
+        outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf"
+    )
     if created_pdf != pdf_path:
         os.replace(created_pdf, pdf_path)
-
     return pdf_path
+
 
 
 
