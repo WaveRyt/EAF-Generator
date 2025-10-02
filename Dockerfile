@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 COPY . /app
 
+
 # Install Python, LibreOffice, and fonts
 RUN apt-get update && \
     apt-get install -y python3 python3-pip libreoffice-core libreoffice-writer fonts-dejavu-core ttf-mscorefonts-installer && \
