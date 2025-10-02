@@ -140,24 +140,44 @@ def convert_docx_to_pdf(docx_path, pdf_path):
 # === ROUTES ===
 @app.route("/login")
 def login():
+    # If not authorized, send to Google login
     if not google.authorized:
         return redirect(url_for("google.login"))
+
+    # Get user info from Google
     resp = google.get("/oauth2/v2/userinfo")
-    email = resp.json().get("email")
-    if email not in ALLOWED_EMAILS:
+    if not resp.ok:
+        flash("Google login failed. Please try again.")
+        return redirect(url_for("google.login"))
+
+    data = resp.json()
+    email = data.get("email")
+
+    if not email or (ALLOWED_EMAILS and email not in ALLOWED_EMAILS):
         flash("Access denied: your email is not allowed.")
+        session.clear()
         return redirect(url_for("login"))
+
+    # Save email in session
     session["user_email"] = email
     return redirect(url_for("index"))
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    if "user_email" not in session:
+    user_email = session.get("user_email")
+
+    if not user_email:
+        flash("Please log in first.")
         return redirect(url_for("login"))
 
-    # --- The rest of your upload & DOCX/PDF logic remains unchanged ---
-    return render_template("index.html")
+    # Example: handle form submission or show dashboard
+    if request.method == "POST":
+        # TODO: handle upload & PDF generation here
+        flash("Your file has been processed.")
+        return redirect(url_for("uploaded_file", filename="example.pdf"))
+
+    return render_template("index.html", user_email=user_email)
 
 
 @app.route("/uploads/<filename>")
@@ -169,6 +189,11 @@ def uploaded_file(filename):
         flash("File not found.")
         return redirect("/")
 
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.")
+    return redirect(url_for("login"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
