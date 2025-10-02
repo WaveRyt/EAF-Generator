@@ -165,19 +165,96 @@ def login():
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    user_email = session.get("user_email")
-
-    if not user_email:
-        flash("Please log in first.")
-        return redirect(url_for("login"))
-
-    # Example: handle form submission or show dashboard
     if request.method == "POST":
-        # TODO: handle upload & PDF generation here
-        flash("Your file has been processed.")
-        return redirect(url_for("uploaded_file", filename="example.pdf"))
+        # Form data
+        date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
+        amount = request.form.get("amount") or "0"
+        amount_words = request.form.get("amount_words") or number_to_words(amount)
+        purpose = request.form.get("purpose") or ""
+        bundle_filename = request.form.get("bundle_filename") or f"Bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        bills_only_filename = request.form.get("bills_only_filename") or f"Bills_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-    return render_template("index.html", user_email=user_email)
+        # Optional Bank details
+        acc_number = request.form.get("account_number") or ""
+        acc_holder = request.form.get("account_holder") or ""
+        bank_name = request.form.get("bank_name") or ""
+        ifsc = request.form.get("ifsc") or ""
+        branch = request.form.get("branch") or ""
+
+        bill_files = request.files.getlist("bills")
+        if not bill_files or all(f.filename == "" for f in bill_files):
+            flash("Please upload at least one bill file (pdf or image).")
+            return redirect(request.url)
+
+        saved_pdf_paths = []
+        for f in bill_files:
+            if f and allowed_file(f.filename):
+                safe_name = secure_filename(f.filename)
+                unique_name = f"{uuid.uuid4().hex}_{safe_name}"
+                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                f.save(save_path)
+                ext = safe_name.rsplit(".", 1)[1].lower()
+                if ext in ("png", "jpg", "jpeg"):
+                    img = Image.open(save_path)
+                    if img.mode in ("RGBA", "LA", "P"):
+                        img = img.convert("RGB")
+                    pdf_path = save_path + ".pdf"
+                    img.save(pdf_path, "PDF", resolution=100.0)
+                    os.remove(save_path)
+                    saved_pdf_paths.append(pdf_path)
+                else:
+                    saved_pdf_paths.append(save_path)
+            else:
+                flash(f"File '{f.filename}' not allowed. Allowed: pdf, png, jpg, jpeg")
+                return redirect(request.url)
+
+        # Generate EAF DOCX
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        out_docx = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.docx")
+        generate_eaf_docx(TEMPLATE_DOCX, out_docx, date, amount, amount_words, purpose,
+                          acc_number, acc_holder, bank_name, ifsc, branch)
+
+        # Convert DOCX -> PDF
+        out_pdf = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.pdf")
+        try:
+            convert_docx_to_pdf(out_docx, out_pdf)
+        except Exception as e:
+            flash(f"Failed to convert DOCX to PDF: {e}")
+            return redirect(request.url)
+
+        # Merge EAF PDF + bills
+        merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename}.pdf")
+        merger = PdfMerger()
+        try:
+            merger.append(out_pdf)
+            for p in saved_pdf_paths:
+                merger.append(p)
+            merger.write(merged_pdf_path)
+            merger.close()
+        except Exception as me:
+            merger.close()
+            flash("Error merging PDFs: " + str(me))
+            return redirect(request.url)
+
+        # Bills only PDF
+        bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename}.pdf")
+        merger2 = PdfMerger()
+        try:
+            for p in saved_pdf_paths:
+                merger2.append(p)
+            merger2.write(bills_only_pdf_path)
+            merger2.close()
+        except Exception as me:
+            merger2.close()
+            flash("Error creating bills-only PDF: " + str(me))
+            return redirect(request.url)
+
+        return render_template("download.html",
+                               bundle_pdf=os.path.basename(merged_pdf_path),
+                               bills_pdf=os.path.basename(bills_only_pdf_path))
+
+    return render_template("index.html")
+
 
 
 @app.route("/uploads/<filename>")
