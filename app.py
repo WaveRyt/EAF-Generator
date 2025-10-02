@@ -1,5 +1,6 @@
 import os
 import uuid
+import subprocess
 from datetime import datetime
 from flask import Flask, request, send_file, render_template, redirect, flash
 from werkzeug.utils import secure_filename
@@ -7,14 +8,12 @@ from PyPDF2 import PdfMerger
 from docx import Document
 from PIL import Image
 from num2words import num2words
-from docx2pdf import convert  # More reliable DOCX->PDF on Linux
-
 import shutil
 
 # === CONFIG ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-TEMPLATE_DOCX = os.path.join(BASE_DIR, "EAF_Template.docx")  # absolute path
+TEMPLATE_DOCX = os.path.join(BASE_DIR, "EAF_Template.docx")
 
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
 MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200 MB
@@ -49,7 +48,7 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
                 if key in run.text:
                     run.text = run.text.replace(key, val)
 
-    # Replace in body
+    # Body
     for para in doc.paragraphs:
         replace_in_paragraph(para)
     for table in doc.tables:
@@ -57,20 +56,18 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
             for cell in row.cells:
                 for para in cell.paragraphs:
                     replace_in_paragraph(para)
-    # Replace in headers/footers
+    # Headers/Footers
     for section in doc.sections:
-        header = section.header
-        for para in header.paragraphs:
+        for para in section.header.paragraphs:
             replace_in_paragraph(para)
-        for table in header.tables:
+        for table in section.header.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for para in cell.paragraphs:
                         replace_in_paragraph(para)
-        footer = section.footer
-        for para in footer.paragraphs:
+        for para in section.footer.paragraphs:
             replace_in_paragraph(para)
-        for table in footer.tables:
+        for table in section.footer.tables:
             for row in table.rows:
                 for cell in row.cells:
                     for para in cell.paragraphs:
@@ -97,17 +94,30 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
 
 
 def convert_docx_to_pdf(docx_path, pdf_path):
-    """Use docx2pdf for reliable conversion on Linux."""
-    convert(docx_path, pdf_path)
+    """Convert DOCX -> PDF using LibreOffice on Linux."""
+    outdir = os.path.dirname(pdf_path)
+    soffice_path = shutil.which("soffice") or shutil.which("libreoffice")
+    if not soffice_path:
+        raise RuntimeError("LibreOffice not found. Please install it.")
+
+    subprocess.run(
+        [soffice_path, "--headless", "--convert-to", "pdf:writer_pdf_Export", "--outdir", outdir, docx_path],
+        check=True
+    )
+
+    generated_pdf = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
+    if generated_pdf != pdf_path:
+        os.replace(generated_pdf, pdf_path)
+
     if not os.path.exists(pdf_path):
         raise RuntimeError("PDF conversion failed")
+
     return pdf_path
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # Form data
         date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
         amount = request.form.get("amount") or "0"
         amount_words = request.form.get("amount_words") or number_to_words(amount)
@@ -115,7 +125,6 @@ def index():
         bundle_filename = request.form.get("bundle_filename") or f"Bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         bills_only_filename = request.form.get("bills_only_filename") or f"Bills_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-        # Optional Bank details
         acc_number = request.form.get("account_number") or ""
         acc_holder = request.form.get("account_holder") or ""
         bank_name = request.form.get("bank_name") or ""
@@ -149,13 +158,11 @@ def index():
                 flash(f"File '{f.filename}' not allowed. Allowed: pdf, png, jpg, jpeg")
                 return redirect(request.url)
 
-        # Generate EAF DOCX
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         out_docx = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.docx")
         generate_eaf_docx(TEMPLATE_DOCX, out_docx, date, amount, amount_words, purpose,
                           acc_number, acc_holder, bank_name, ifsc, branch)
 
-        # Convert DOCX -> PDF
         out_pdf = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.pdf")
         try:
             convert_docx_to_pdf(out_docx, out_pdf)
@@ -163,7 +170,6 @@ def index():
             flash(f"Failed to convert DOCX to PDF: {e}")
             return redirect(request.url)
 
-        # Merge EAF PDF + bills
         merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename}.pdf")
         merger = PdfMerger()
         try:
@@ -177,7 +183,6 @@ def index():
             flash("Error merging PDFs: " + str(me))
             return redirect(request.url)
 
-        # Bills only PDF
         bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename}.pdf")
         merger2 = PdfMerger()
         try:
@@ -209,5 +214,3 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-    
