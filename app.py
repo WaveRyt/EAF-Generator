@@ -18,16 +18,16 @@ TEMPLATE_DOCX = os.path.join(BASE_DIR, "EAF_Template.docx")
 ALLOWED_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
 MAX_CONTENT_LENGTH = 200 * 1024 * 1024  # 200 MB
 
-# Flask setup
+# === FLASK SETUP ===
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-this")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Allowed emails from env
-ALLOWED_EMAILS = os.environ.get("ALLOWED_EMAILS", "").split(",")
-ALLOWED_EMAILS = [email.strip() for email in ALLOWED_EMAILS if email.strip()]
+# Allowed emails from environment
+ALLOWED_EMAILS = os.environ.get("ALLOWED_EMAILS", "")
+ALLOWED_EMAILS = [email.strip() for email in ALLOWED_EMAILS.split(",") if email.strip()]
 
 # Google OAuth setup
 google_bp = make_google_blueprint(
@@ -38,11 +38,9 @@ google_bp = make_google_blueprint(
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 
-
 # === UTILITIES ===
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
 
 def number_to_words(amount):
     try:
@@ -55,15 +53,12 @@ def number_to_words(amount):
         words = num2words(amt_int)
     return words.replace("-", " ").title() + " Rupees Only"
 
-
 def replace_placeholders_in_docx(doc: Document, mapping: dict):
     def replace_in_paragraph(paragraph):
         for run in paragraph.runs:
             for key, val in mapping.items():
                 if key in run.text:
                     run.text = run.text.replace(key, val)
-
-    # Body
     for para in doc.paragraphs:
         replace_in_paragraph(para)
     for table in doc.tables:
@@ -71,7 +66,6 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
             for cell in row.cells:
                 for para in cell.paragraphs:
                     replace_in_paragraph(para)
-    # Headers/Footers
     for section in doc.sections:
         for para in section.header.paragraphs:
             replace_in_paragraph(para)
@@ -87,7 +81,6 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
                 for cell in row.cells:
                     for para in cell.paragraphs:
                         replace_in_paragraph(para)
-
 
 def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_words, remarks,
                       acc_number="", acc_holder="", bank_name="", ifsc="", branch=""):
@@ -107,7 +100,6 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
     doc.save(out_docx_path)
     return out_docx_path
 
-
 def convert_docx_to_pdf(docx_path, pdf_path):
     outdir = os.path.dirname(pdf_path)
     possible_paths = [
@@ -119,21 +111,16 @@ def convert_docx_to_pdf(docx_path, pdf_path):
     soffice_path = next((p for p in possible_paths if p and os.path.exists(p)), None)
     if not soffice_path:
         raise RuntimeError("LibreOffice not found. Install it in Dockerfile or system.")
-
     subprocess.run(
         [soffice_path, "--headless", "--convert-to", "pdf:writer_pdf_Export", "--outdir", outdir, docx_path],
         check=True
     )
-
     generated_pdf = os.path.join(outdir, os.path.splitext(os.path.basename(docx_path))[0] + ".pdf")
     if generated_pdf != pdf_path:
         os.replace(generated_pdf, pdf_path)
-
     if not os.path.exists(pdf_path):
         raise RuntimeError("PDF conversion failed")
-
     return pdf_path
-
 
 # === ROUTES ===
 @app.route("/login")
@@ -147,7 +134,6 @@ def login():
         return redirect(url_for("login"))
     session["user_email"] = email
     return redirect(url_for("index"))
-
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -244,7 +230,6 @@ def index():
 
     return render_template("index.html")
 
-
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
     file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -253,7 +238,6 @@ def uploaded_file(filename):
     else:
         flash("File not found.")
         return redirect("/")
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

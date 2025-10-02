@@ -7,10 +7,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Set working directory
 WORKDIR /app
 
-# Copy app
+# Copy application files
 COPY . /app
 
-# Install Python, LibreOffice, fonts, and dependencies
+# Install Python, LibreOffice, fonts, and utilities
 RUN apt-get update && \
     apt-get install -y \
         python3 python3-pip \
@@ -23,7 +23,11 @@ RUN apt-get update && \
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Expose port
+# Set environment variables for Flask (optional defaults)
+ENV FLASK_ENV=production
+ENV FLASK_APP=app.py
+
+# Expose port 5000
 EXPOSE 5000
 
 # Start Gunicorn
