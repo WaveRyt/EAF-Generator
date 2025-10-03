@@ -13,7 +13,10 @@
 </head>
 <body>
   <div class="container">
-    <h2 class="mb-3">EAF Generator - Shaastra2026</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>EAF Generator - Shaastra2026</h2>
+      <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+    </div>
 
     {% with messages = get_flashed_messages() %}
       {% if messages %}
@@ -22,6 +25,7 @@
         </div>
       {% endif %}
     {% endwith %}
+
 
     <form method="post" enctype="multipart/form-data">
 
@@ -52,33 +56,48 @@
       </div>
 
       <!-- Bank Details (Optional) -->
-      <h5 class="mt-4">Bank Details (Optional Override)</h5>
+      <h5 class="mt-4">Bank Details</h5>
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Existing Details</label>
+        <div class="col-sm-4">
+          <select class="form-select" id="existingDetails" name="existing" onchange="fillBankDetails(this)">
+            <option selected disabled>Choose...</option>
+            <option value="eshwar">Eshwar</option>
+            <option value="siddhi">Siddhi</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Account Number</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" name="account_number" placeholder="e.g. 1234567890">
+          <input type="text" class="form-control" id="accountNumber" name="account_number">
         </div>
         <label class="col-sm-2 col-form-label">Account Holder Name</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" name="account_holder" placeholder="e.g. John Doe">
+          <input type="text" class="form-control" id="accountHolder" name="account_holder">
         </div>
       </div>
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Bank Name</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" name="bank_name" placeholder="e.g. HDFC Bank">
+          <input type="text" class="form-control" id="bankName" name="bank_name">
         </div>
         <label class="col-sm-2 col-form-label">IFSC Code</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" name="ifsc" placeholder="e.g. HDFC0001234">
+          <input type="text" class="form-control" id="ifsc" name="ifsc">
         </div>
       </div>
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Branch</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" name="branch" placeholder="e.g. MG Road">
+          <input type="text" class="form-control" id="branch" name="branch">
         </div>
       </div>
+
+
+
 
       <!-- Upload Bills -->
       <div class="mb-3">
@@ -89,13 +108,9 @@
 
       <!-- Custom filenames -->
       <div class="mb-3 row">
-        <label class="col-sm-2 col-form-label">Bundle PDF Name</label>
+        <label class="col-sm-2 col-form-label">PDF Name</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" name="bundle_filename" placeholder="e.g. EAF_Bundle" required>
-        </div>
-        <label class="col-sm-2 col-form-label">Bills Only PDF Name</label>
-        <div class="col-sm-4">
-          <input type="text" class="form-control" name="bills_only_filename" placeholder="e.g. Bills_Only" required>
+          <input type="text" class="form-control" name="filename" placeholder="e.g. EAF_NAME" required>
         </div>
       </div>
 
@@ -108,5 +123,41 @@
       Built for Shaastra finance workflow. After download you can upload the final bundle to Drive / attach to emails / track in your GSheet.
     </p>
   </div>
+
+  <script>
+    function fillBankDetails(select) {
+      const accountNumber = document.getElementById("accountNumber");
+      const accountHolder = document.getElementById("accountHolder");
+      const bankName = document.getElementById("bankName");
+      const ifsc = document.getElementById("ifsc");
+      const branch = document.getElementById("branch");
+
+      if (select.value === "eshwar") {
+        accountNumber.value = "0862100100001911";
+        accountHolder.value = "Vuppala Eshwar Sai";
+        bankName.value = "Punjab National Bank";
+        ifsc.value = "PUNB0086210";
+        branch.value = "Gurbabadhi road, Nizamabad";
+      } else if (select.value === "siddhi") {
+        accountNumber.value = "50100807816820";
+        accountHolder.value = "Siddhi Govind Singh";
+        bankName.value = "HDFC Bank";
+        ifsc.value = "HDFC0004690";
+        branch.value = "Bodhale Nagar";
+      } else {
+        // Clear values for "Other"
+        accountNumber.value = "";
+        accountHolder.value = "";
+        bankName.value = "";
+        ifsc.value = "";
+        branch.value = "";
+      }
+    }
+
+    window.addEventListener("beforeunload", function () {
+      navigator.sendBeacon("{{ url_for('logout') }}");
+    });
+  </script>
+
 </body>
 </html>

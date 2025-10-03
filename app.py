@@ -24,6 +24,9 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+
+app.config['SESSION_PERMANENT'] = False
+
 # Simple credentials (override with env vars in production!)
 VALID_USERS = {
     os.environ.get("APP_USERNAME", "admin"): os.environ.get("APP_PASSWORD", "password123")
@@ -145,7 +148,6 @@ def login():
 @app.route("/", methods=["GET", "POST"])
 def index():
     if "user" not in session:
-        flash("Please log in first.")
         return redirect(url_for("login"))
 
     if request.method == "POST":
@@ -154,10 +156,10 @@ def index():
         amount = request.form.get("amount") or "0"
         amount_words = request.form.get("amount_words") or number_to_words(amount)
         purpose = request.form.get("purpose") or ""
-        bundle_filename = request.form.get("bundle_filename") or f"Bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        bills_only_filename = request.form.get("bills_only_filename") or f"Bills_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
+        bundle_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        bills_only_filename = bundle_filename + "_Bill"
         # Optional Bank details
+
         acc_number = request.form.get("account_number") or ""
         acc_holder = request.form.get("account_holder") or ""
         bank_name = request.form.get("bank_name") or ""
@@ -252,7 +254,6 @@ def uploaded_file(filename):
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("You have been logged out.")
     return redirect(url_for("login"))
 
 
