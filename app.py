@@ -9,7 +9,6 @@ from docx import Document
 from PIL import Image
 from num2words import num2words
 import shutil
-from flask_dance.contrib.google import make_google_blueprint, google
 
 # === CONFIG ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -25,22 +24,10 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Allowed emails from env
-ALLOWED_EMAILS = os.environ.get("ALLOWED_EMAILS", "").split(",")
-ALLOWED_EMAILS = [email.strip() for email in ALLOWED_EMAILS if email.strip()]
-
-# Google OAuth setup (updated scopes!)
-google_bp = make_google_blueprint(
-    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
-    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
-    scope=[
-        "openid",
-        "https://www.googleapis.com/auth/userinfo.email",
-        "https://www.googleapis.com/auth/userinfo.profile"
-    ],
-    redirect_url="/login/google/authorized"
-)
-app.register_blueprint(google_bp, url_prefix="/login")
+# Simple credentials (override with env vars in production!)
+VALID_USERS = {
+    os.environ.get("APP_USERNAME", "admin"): os.environ.get("APP_PASSWORD", "password123")
+}
 
 
 # === UTILITIES ===
@@ -138,28 +125,29 @@ def convert_docx_to_pdf(docx_path, pdf_path):
 
 
 # === ROUTES ===
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
-    if not google.authorized:
-        return redirect(url_for("google.login"))
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
 
-    resp = google.get("/oauth2/v2/userinfo")
-    if not resp.ok:
-        flash("Google login failed. Please try again.")
-        return redirect(url_for("index"))
+        if username in VALID_USERS and VALID_USERS[username] == password:
+            session["user"] = username
+            flash("Login successful!")
+            return redirect(url_for("index"))
+        else:
+            flash("Invalid username or password.")
+            return redirect(url_for("login"))
 
-    email = resp.json().get("email")
-    if not email or email not in ALLOWED_EMAILS:
-        flash("Access denied: your email is not allowed.")
-        return redirect(url_for("unauthorized"))
-
-    session["user_email"] = email
-    return redirect(url_for("index"))
-
+    return render_template("login.html")
 
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    if "user" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
     if request.method == "POST":
         # Form data
         date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
@@ -219,28 +207,24 @@ def index():
 
         # Merge EAF PDF + bills
         merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename}.pdf")
-        merger = PdfMerger()
         try:
-            merger.append(out_pdf)
-            for p in saved_pdf_paths:
-                merger.append(p)
-            merger.write(merged_pdf_path)
-            merger.close()
+            with PdfMerger() as merger:
+                merger.append(out_pdf)
+                for p in saved_pdf_paths:
+                    merger.append(p)
+                merger.write(merged_pdf_path)
         except Exception as me:
-            merger.close()
             flash("Error merging PDFs: " + str(me))
             return redirect(request.url)
 
         # Bills only PDF
         bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename}.pdf")
-        merger2 = PdfMerger()
         try:
-            for p in saved_pdf_paths:
-                merger2.append(p)
-            merger2.write(bills_only_pdf_path)
-            merger2.close()
+            with PdfMerger() as merger2:
+                for p in saved_pdf_paths:
+                    merger2.append(p)
+                merger2.write(bills_only_pdf_path)
         except Exception as me:
-            merger2.close()
             flash("Error creating bills-only PDF: " + str(me))
             return redirect(request.url)
 
@@ -251,9 +235,12 @@ def index():
     return render_template("index.html")
 
 
-
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
+    if "user" not in session:
+        flash("Please log in first.")
+        return redirect(url_for("login"))
+
     file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
@@ -261,11 +248,13 @@ def uploaded_file(filename):
         flash("File not found.")
         return redirect("/")
 
+
 @app.route("/logout")
 def logout():
     session.clear()
     flash("You have been logged out.")
     return redirect(url_for("login"))
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
