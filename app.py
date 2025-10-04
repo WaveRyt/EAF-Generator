@@ -164,9 +164,12 @@ def index():
     if "user" not in session:
         return redirect(url_for("login"))
 
+    today = datetime.now().strftime("%Y-%m-%d")  # format for <input type="date">
+
     if request.method == "POST":
         # Form data
-        date = request.form.get("date") or datetime.now().strftime("%d-%m-%Y")
+        date = request.form.get("date") or today
+        date = datetime.strptime(date, "%Y-%m-%d").strftime("%d-%m-%Y")
         amount = request.form.get("amount") or "0"
         amount_words = request.form.get("amount_words") or number_to_words(amount)
         purpose = request.form.get("purpose") or ""
@@ -208,7 +211,7 @@ def index():
                 return redirect(request.url)
 
         # Generate EAF DOCX
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
         out_docx = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.docx")
         generate_eaf_docx(TEMPLATE_DOCX, out_docx, date, amount, amount_words, purpose,
                           acc_number, acc_holder, bank_name, ifsc, branch)
@@ -248,7 +251,7 @@ def index():
                                bundle_pdf=os.path.basename(merged_pdf_path),
                                bills_pdf=os.path.basename(bills_only_pdf_path))
 
-    return render_template("index.html")
+    return render_template("index.html", today = today)
 
 
 @app.route("/uploads/<filename>")
