@@ -166,11 +166,11 @@ def index():
 
     if request.method == "POST":
         # Form data
-        date = request.form.get("date") or datetime.now().strftime("%Y-%m-%d")
+        date = request.form.get("date") or datetime.now().strftime("%d-%m-%Y")
         amount = request.form.get("amount") or "0"
         amount_words = request.form.get("amount_words") or number_to_words(amount)
         purpose = request.form.get("purpose") or ""
-        bundle_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        bundle_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%d%m%Y_%H%M%S')}"
         bills_only_filename = bundle_filename + "_Bill"
         # Optional Bank details
 
