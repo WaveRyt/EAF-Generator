@@ -52,18 +52,31 @@ def number_to_words(amount):
 
 def replace_placeholders_in_docx(doc: Document, mapping: dict):
     def replace_in_paragraph(paragraph):
-        for run in paragraph.runs:
-            for key, val in mapping.items():
-                if key in run.text:
-                    run.text = run.text.replace(key, val)
+        if not paragraph.text:
+            return
+        new_text = paragraph.text
+        for key, val in mapping.items():
+            if key in new_text:
+                new_text = new_text.replace(key, val)
+        if new_text != paragraph.text:
+            # Clear all runs
+            for run in paragraph.runs:
+                run.text = ""
+            # Put replaced text in the first run
+            paragraph.runs[0].text = new_text
 
+    # Replace in normal paragraphs
     for para in doc.paragraphs:
         replace_in_paragraph(para)
+
+    # Replace inside tables
     for table in doc.tables:
         for row in table.rows:
             for cell in row.cells:
                 for para in cell.paragraphs:
                     replace_in_paragraph(para)
+
+    # Replace in headers and footers
     for section in doc.sections:
         for para in section.header.paragraphs:
             replace_in_paragraph(para)
@@ -72,6 +85,7 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
                 for cell in row.cells:
                     for para in cell.paragraphs:
                         replace_in_paragraph(para)
+
         for para in section.footer.paragraphs:
             replace_in_paragraph(para)
         for table in section.footer.tables:

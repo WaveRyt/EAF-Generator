@@ -5,17 +5,30 @@
   <meta charset="utf-8">
   <title>EAF Generator - Shaastra26</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { padding: 30px; }
     .file-list { margin-top: 8px; font-size: 0.9rem; }
+    .logo {
+      height: auto;
+      width: 120px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2>EAF Generator - Shaastra2026</h2>
-      <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+      <div class="d-flex align-items-center">
+        <h2 class="me-3">EAF Generator - Shaastra2026</h2>
+      </div>
+      <div class="d-flex flex-column align-items-end">
+        <!-- Logo at top right -->
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo mb-4">
+
+        <!-- Logout button below logo -->
+        <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+      </div>
     </div>
 
     {% with messages = get_flashed_messages() %}
@@ -26,9 +39,7 @@
       {% endif %}
     {% endwith %}
 
-
     <form method="post" enctype="multipart/form-data">
-
       <!-- Date -->
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Date</label>
@@ -96,9 +107,6 @@
         </div>
       </div>
 
-
-
-
       <!-- Upload Bills -->
       <div class="mb-3">
         <label class="form-label">Upload Bills (PDF / JPG / PNG). Multiple allowed</label>
@@ -145,7 +153,6 @@
         ifsc.value = "HDFC0004690";
         branch.value = "Bodhale Nagar";
       } else {
-        // Clear values for "Other"
         accountNumber.value = "";
         accountHolder.value = "";
         bankName.value = "";
@@ -153,11 +160,6 @@
         branch.value = "";
       }
     }
-
-    window.addEventListener("beforeunload", function () {
-      navigator.sendBeacon("{{ url_for('logout') }}");
-    });
   </script>
-
 </body>
 </html>
