@@ -97,9 +97,9 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
 
 def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_words, event_name, remarks, budget_name, budget_head,
                       budgeted_amount, amount_spent, payment_type, acc_number, acc_holder, bank_name, ifsc, branch):
-    vendor_payment = "☐" if payment_type == "vendor_payment" else "☑"
-    reimbursement = "☐" if payment_type == "reimbursement" else "☑"
-    advance = "☐" if payment_type == "advance" else "☑"
+    vendor_payment = "✔" if payment_type == "vendor_payment" else ""
+    reimbursement = "✔" if payment_type == "reimbursement" else ""
+    advance = "✔" if payment_type == "advance" else ""
     
     doc = Document(template_path)
     mapping = {
@@ -107,7 +107,7 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
         "{{TOTAL_AMOUNT}}": str(amount),
         "{{TOTAL_AMOUNT_WORDS}}": amount_words,
         "{{EVENT_NAME}}": event_name,
-        "{{Remarks}}": remarks,
+        "{{REMARKS}}": remarks,
         "{{BUDGET_NAME}}": budget_name,
         "{{BUDGET_HEAD}}": budget_head,
         "{{BUDGETED_AMOUNT}}": budgeted_amount,
