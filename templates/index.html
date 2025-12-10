@@ -53,7 +53,7 @@
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Amount (₹)</label>
         <div class="col-sm-4">
-          <input type="number" step="0.01" class="form-control" name="amount" placeholder="e.g. 12345" required>
+          <input type="number" step="0.01" class="form-control" name="amount" placeholder="Amount" required>
         </div>
         <label class="col-sm-2 col-form-label">Amount (Words)</label>
         <div class="col-sm-4">
@@ -61,10 +61,55 @@
         </div>
       </div>
 
-      <!-- Purpose / Remarks -->
+      <!-- Event Details-->
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Event Name</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="event_name" placeholder="Event Name" required>
+        </div>
+      </div>
+
+      <!-- Remarks -->
       <div class="mb-3">
-        <label class="form-label">Purpose / Remarks</label>
-        <textarea class="form-control" name="purpose" rows="3" placeholder="Short description of expense" required></textarea>
+        <label class="form-label">Remarks</label>
+        <textarea class="form-control" name="purpose" rows="3" placeholder="Short description of expense"></textarea>
+      </div>
+
+      <!-- Budget Details-->
+      <h5 class="mt-4">Budget Details</h5>
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Budget Name</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="budget_name" placeholder="Budget Name" required>
+        </div>
+        <label class="col-sm-2 col-form-label">Budget Head / Sub Head</label>
+        <div class="col-sm-4">
+          <input type="text" class="form-control" name="budget_head" placeholder="Budget Head" required>
+        </div>
+      </div>
+
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Budgeted Amount</label>
+        <div class="col-sm-4">
+          <input type="number" step= "0.01" class="form-control" name="budgeted_amount" placeholder="Budgeted Amount" required>
+        </div>
+        <label class="col-sm-2 col-form-label">Amount Spent</label>
+        <div class="col-sm-4">
+          <input type="number" step="0.01" class="form-control" name="amount_spent" placeholder="Amount Spent" required>
+        </div>
+      </div>
+
+      <!-- Payment Type-->
+      <div class="mb-3 row">
+        <label class="col-sm-2 col-form-label">Payment Type</label>
+        <div class="col-sm-4">
+          <select class="form-select" id="paymentType" name="payment_type" required>
+            <option value="" selected disabled>Choose...</option>
+            <option value="vendorpayment">Vendor Payment</option>
+            <option value="reimbursement">Reimbursement</option>
+            <option value="advance">Advance</option>
+          </select>
+        </div>
       </div>
 
       <!-- Bank Details (Optional) -->
@@ -84,27 +129,27 @@
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Account Number</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" id="accountNumber" name="account_number">
+          <input type="text" class="form-control" id="accountNumber" name="account_number" required>
         </div>
         <label class="col-sm-2 col-form-label">Account Holder Name</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" id="accountHolder" name="account_holder">
+          <input type="text" class="form-control" id="accountHolder" name="account_holder" required>
         </div>
       </div>
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Bank Name</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" id="bankName" name="bank_name">
+          <input type="text" class="form-control" id="bankName" name="bank_name" required>
         </div>
         <label class="col-sm-2 col-form-label">IFSC Code</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" id="ifsc" name="ifsc">
+          <input type="text" class="form-control" id="ifsc" name="ifsc" required>
         </div>
       </div>
       <div class="mb-3 row">
         <label class="col-sm-2 col-form-label">Branch</label>
         <div class="col-sm-4">
-          <input type="text" class="form-control" id="branch" name="branch">
+          <input type="text" class="form-control" id="branch" name="branch" required>
         </div>
       </div>
 
