@@ -96,7 +96,7 @@ def replace_placeholders_in_docx(doc: Document, mapping: dict):
 
 
 def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_words, event_name, remarks, budget_name, budget_head,
-                      budgeted_amount, amount_spent, payment_type, acc_number, acc_holder, bank_name, ifsc, branch):
+                      budgeted_amount, amount_spent, balance_available, payment_type, acc_number, acc_holder, bank_name, ifsc, branch):
     vendor_payment = "✔" if payment_type == "vendor_payment" else ""
     reimbursement = "✔" if payment_type == "reimbursement" else ""
     advance = "✔" if payment_type == "advance" else ""
@@ -112,7 +112,7 @@ def generate_eaf_docx(template_path, out_docx_path, date_str, amount, amount_wor
         "{{BUDGET_HEAD}}": budget_head,
         "{{BUDGETED_AMOUNT}}": budgeted_amount,
         "{{AMOUNT_SPENT}}": amount_spent,
-        "{{BALANCE_AVAILABLE}}": str(int(budgeted_amount) - int(amount_spent)),
+        "{{BALANCE_AVAILABLE}}": balance_available,
         "{{V}}": vendor_payment,
         "{{R}}": reimbursement,
         "{{A}}": advance,
@@ -185,11 +185,14 @@ def index():
         date = datetime.strptime(date, "%Y-%m-%d").strftime("%d-%m-%Y")
         amount = request.form.get("amount") or "0"
         amount_words = request.form.get("amount_words") or number_to_words(amount)
-        event_name = request.form.get("event_name")
-        budget_name = request.form.get("budget_name")
-        budget_head = request.form.get("budget_head")
-        budgeted_amount = request.form.get("budgeted_amount")
-        amount_spent = request.form.get("amount_spent")
+        event_name = request.form.get("event_name") or ""
+        budget_name = request.form.get("budget_name") or ""
+        budget_head = request.form.get("budget_head") or ""
+        budgeted_amount = request.form.get("budgeted_amount") or ""
+        amount_spent = request.form.get("amount_spent") or ""
+        balance_available = ""
+        if (budgeted_amount != "" and amount_spent != ""):
+            balance_available = str(int(budgeted_amount) - int(amount_spent))
         payment_type = request.form.get("payment_type")
         purpose = request.form.get("purpose") or ""
         bundle_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%d%m%Y_%H%M%S')}"
@@ -233,7 +236,7 @@ def index():
         timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
         out_docx = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.docx")
         generate_eaf_docx(TEMPLATE_DOCX, out_docx, date, amount, amount_words, event_name, purpose, budget_name, budget_head,
-                          budgeted_amount, amount_spent, payment_type, acc_number, acc_holder, bank_name, ifsc, branch)
+                          budgeted_amount, amount_spent, balance_available, payment_type, acc_number, acc_holder, bank_name, ifsc, branch)
 
         # Convert DOCX -> PDF
         out_pdf = os.path.join(app.config["UPLOAD_FOLDER"], f"EAF_{timestamp}.pdf")
