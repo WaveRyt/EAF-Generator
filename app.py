@@ -213,8 +213,10 @@ def index():
         if not bill_files or all(f.filename == "" for f in bill_files):
             bills_empty = True
 
+        saved_pdf_paths = []
+        
         if not bills_empty:
-            saved_pdf_paths = []
+            
             for f in bill_files:
                 if f and allowed_file(f.filename):
                     safe_name = secure_filename(f.filename)
