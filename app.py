@@ -196,10 +196,10 @@ def index():
             balance_available = str(int(budgeted_amount) - int(amount_spent))
         payment_type = request.form.get("payment_type")
         purpose = request.form.get("purpose") or ""
-        bundle_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%d%m%Y_%H%M%S')}"
-        bundle_filename_encoded = quote(bundle_filename)
-        bills_only_filename = bundle_filename + "_Bill"
-        bills_only_filename_encoded = quote(bills_only_filename)
+        eaf_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%d%m%Y_%H%M%S')}"
+        secure_eaf_filename = secure_filename(eaf_filename)
+        bills_only_filename = eaf_filename + "_Bill"
+        secure_bills_only_filename = secure_filename(bills_only_filename)
         # Optional Bank details
 
         acc_number = request.form.get("account_number") or ""
@@ -209,31 +209,32 @@ def index():
         branch = request.form.get("branch") or ""
 
         bill_files = request.files.getlist("bills")
+        bills_empty = False
         if not bill_files or all(f.filename == "" for f in bill_files):
-            flash("Please upload at least one bill file (pdf or image).")
-            return redirect(request.url)
+            bills_empty = True
 
-        saved_pdf_paths = []
-        for f in bill_files:
-            if f and allowed_file(f.filename):
-                safe_name = secure_filename(f.filename)
-                unique_name = f"{uuid.uuid4().hex}_{safe_name}"
-                save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
-                f.save(save_path)
-                ext = safe_name.rsplit(".", 1)[1].lower()
-                if ext in ("png", "jpg", "jpeg"):
-                    img = Image.open(save_path)
-                    if img.mode in ("RGBA", "LA", "P"):
-                        img = img.convert("RGB")
-                    pdf_path = save_path + ".pdf"
-                    img.save(pdf_path, "PDF", resolution=100.0)
-                    os.remove(save_path)
-                    saved_pdf_paths.append(pdf_path)
+        if not bills_empty:
+            saved_pdf_paths = []
+            for f in bill_files:
+                if f and allowed_file(f.filename):
+                    safe_name = secure_filename(f.filename)
+                    unique_name = f"{uuid.uuid4().hex}_{safe_name}"
+                    save_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+                    f.save(save_path)
+                    ext = safe_name.rsplit(".", 1)[1].lower()
+                    if ext in ("png", "jpg", "jpeg"):
+                        img = Image.open(save_path)
+                        if img.mode in ("RGBA", "LA", "P"):
+                            img = img.convert("RGB")
+                        pdf_path = save_path + ".pdf"
+                        img.save(pdf_path, "PDF", resolution=100.0)
+                        os.remove(save_path)
+                        saved_pdf_paths.append(pdf_path)
+                    else:
+                        saved_pdf_paths.append(save_path)
                 else:
-                    saved_pdf_paths.append(save_path)
-            else:
-                flash(f"File '{f.filename}' not allowed. Allowed: pdf, png, jpg, jpeg")
-                return redirect(request.url)
+                    flash(f"File '{f.filename}' not allowed. Allowed: pdf, png, jpg, jpeg")
+                    return redirect(request.url)
 
         # Generate EAF DOCX
         timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
@@ -250,7 +251,7 @@ def index():
             return redirect(request.url)
 
         # Merge EAF PDF + bills
-        merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename_encoded}.pdf")
+        merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{secure_eaf_filename}.pdf")
         try:
             with PdfMerger() as merger:
                 merger.append(out_pdf)
@@ -262,19 +263,24 @@ def index():
             return redirect(request.url)
 
         # Bills only PDF
-        bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename_encoded}.pdf")
-        try:
-            with PdfMerger() as merger2:
-                for p in saved_pdf_paths:
-                    merger2.append(p)
-                merger2.write(bills_only_pdf_path)
-        except Exception as me:
-            flash("Error creating bills-only PDF: " + str(me))
-            return redirect(request.url)
+        if not bills_empty: 
+            bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{secure_bills_only_filename}.pdf")
+            try:
+                with PdfMerger() as merger2:
+                    for p in saved_pdf_paths:
+                        merger2.append(p)
+                    merger2.write(bills_only_pdf_path)
+            except Exception as me:
+                flash("Error creating bills-only PDF: " + str(me))
+                return redirect(request.url)
 
-        return render_template("download.html",
-                               bundle_pdf=os.path.basename(merged_pdf_path),
+        if not bills_empty:
+            return render_template("download.html",
+                               eaf_pdf=os.path.basename(merged_pdf_path),
                                bills_pdf=os.path.basename(bills_only_pdf_path))
+        else:
+            return render_template("download_eaf_only.html",
+                               eaf_pdf=os.path.basename(merged_pdf_path))
 
     return render_template("index.html", today = today)
 
