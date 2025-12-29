@@ -9,6 +9,7 @@ from docx import Document
 from PIL import Image
 from num2words import num2words
 import shutil
+from urllib.parse import quote
 
 # === CONFIG ===
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -196,7 +197,9 @@ def index():
         payment_type = request.form.get("payment_type")
         purpose = request.form.get("purpose") or ""
         bundle_filename = request.form.get("filename") or f"Bundle_{datetime.now().strftime('%d%m%Y_%H%M%S')}"
+        bundle_filename_encoded = quote(bundle_filename)
         bills_only_filename = bundle_filename + "_Bill"
+        bills_only_filename_encoded = quote(bills_only_filename)
         # Optional Bank details
 
         acc_number = request.form.get("account_number") or ""
@@ -247,7 +250,7 @@ def index():
             return redirect(request.url)
 
         # Merge EAF PDF + bills
-        merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename}.pdf")
+        merged_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bundle_filename_encoded}.pdf")
         try:
             with PdfMerger() as merger:
                 merger.append(out_pdf)
@@ -259,7 +262,7 @@ def index():
             return redirect(request.url)
 
         # Bills only PDF
-        bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename}.pdf")
+        bills_only_pdf_path = os.path.join(app.config["UPLOAD_FOLDER"], f"{bills_only_filename_encoded}.pdf")
         try:
             with PdfMerger() as merger2:
                 for p in saved_pdf_paths:
